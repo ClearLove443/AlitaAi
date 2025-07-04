@@ -1,0 +1,6 @@
+[llm]
+model = "deepseek-chat"
+base_url = "https://api.deepseek.com/"
+api_key = "sk-08769ff2aa534998a0c42fe6c825d7bf"
+
+
