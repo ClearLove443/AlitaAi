@@ -42,13 +42,18 @@ async def main():
     logger.info("Creating agent runtime...")
     runtime = SingleThreadedAgentRuntime()
 
-    # Register the coding agent
-    logger.info("Registering coding agent...")
+    # Register the coding agent factory
+    logger.info("Registering coding agent factory...")
     await CodingAgent.register(
-        runtime,
-        "coding",
-        lambda: CodingAgent(model_client=model_client),
+        runtime=runtime,
+        type="coding",
+        factory=lambda: CodingAgent(model_client=model_client)
     )
+    
+    # Get the agent instance from the runtime
+    coding_agent = await runtime.get("coding")
+    logger.info("Coding agent created with id: %s", coding_agent)
+
 
     # Start the runtime and send a message
     logger.info("Starting runtime...")

@@ -1,8 +1,11 @@
 import tempfile
 import asyncio
 import logging
-from typing import List, Optional
+from typing import Any, Awaitable, Callable, List, Optional
 from dataclasses import dataclass
+
+from autogen_core.tools import Tool, FunctionTool
+from autogen_core.memory import Memory
 
 from autogen_core import (
     DefaultTopicId,
@@ -37,12 +40,11 @@ class CodingAgent(RoutedAgent):
         tools: List[Tool | Callable[..., Any] | Callable[..., Awaitable[Any]]] | None = None,
         memory: Optional[Memory] = None,
         ) -> None:
-
+        
         super().__init__("A coding agent.")
         self._model_client = model_client
+        self._tools = []  # Initialize tools list
         
-        
-
         # TODO check this code from AssistantAgent
         if tools is not None:
             if model_client.model_info["function_calling"] is False:

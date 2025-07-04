@@ -7,11 +7,16 @@ readme = "README.md"
 packages = [{include = "alita"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.10.5,<3.14"
 openai = "^1.0.0"
 pydantic = "^2.0.0"
 fastapi = "^0.100.0"
 uvicorn = "^0.23.0"
+autogen = "^0.9.5"
+autogen-core = "^0.6.0"
+autogen-ext = "^0.6.0"
+toml = "^0.10.2"
+langchain = "^0.3.26"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
