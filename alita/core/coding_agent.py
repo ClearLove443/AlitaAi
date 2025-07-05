@@ -1,28 +1,15 @@
+from langchain_core.messages.ai import AIMessage
+from langchain_openai import ChatOpenAI
+
 import tempfile
 import asyncio
+import json
+import inspect
 import logging
-from typing import Any, Awaitable, Callable, List, Optional
+from typing import Any, Awaitable, Callable, List, Optional, Dict
 from dataclasses import dataclass
-
-from autogen_core.tools import Tool, FunctionTool
-from autogen_core.memory import Memory
-
-from autogen_core import (
-    DefaultTopicId,
-    MessageContext,
-    RoutedAgent,
-    default_subscription,
-    message_handler,
-)
-from autogen_core.code_executor import CodeBlock, CodeExecutor
-from autogen_core.models import (
-    AssistantMessage,
-    ChatCompletionClient,
-    LLMMessage,
-    SystemMessage,
-    UserMessage,
-    ModelFamily
-)
+from .execute_bash_command_tmux import execute_bash_command_tmux
+from .utils import FUNCTION_REGISTRY
 
 from .prompts.coding_agent_prompt import SYSTEM_PROMPT_TEMPLATE, SYSTEM_PREFIX, SYSTEM_SUFFIX, RUNNING_EXAMPLE
 
@@ -32,77 +19,132 @@ logger = logging.getLogger(__name__)
 class Message:
     content: str
 
-@default_subscription
-class CodingAgent(RoutedAgent):
+@dataclass
+class Memory:
+    content: str
+
+class CodingAgent():
     def __init__(
         self, 
-        model_client: ChatCompletionClient,
-        tools: List[Tool | Callable[..., Any] | Callable[..., Awaitable[Any]]] | None = None,
+        model_client: ChatOpenAI,
+        tools: List[Callable[..., Any] | Callable[..., Awaitable[Any]]] | None = None,
         memory: Optional[Memory] = None,
         ) -> None:
         
-        super().__init__("A coding agent.")
-        self._model_client = model_client
-        self._tools = []  # Initialize tools list
+        self._model_client = model_client.bind_tools(tools)
+        self._tools = tools  # Initialize tools list
         
-        # TODO check this code from AssistantAgent
-        if tools is not None:
-            if model_client.model_info["function_calling"] is False:
-                raise ValueError("The model does not support function calling.")
-            for tool in tools:
-                if isinstance(tool, Tool):
-                    self._tools.append(tool)
-                elif callable(tool):
-                    if hasattr(tool, "__doc__") and tool.__doc__ is not None:
-                        description = tool.__doc__
+    def _construct_full_prompt(self, task: str) -> str:
+        # return SYSTEM_PROMPT_TEMPLATE.format(
+        #     PREFIX=SYSTEM_PREFIX,
+        #     EXAMPLE=RUNNING_EXAMPLE,
+        #     TOOLS="",  # TODO We'll add tools later
+        #     SUFFIX=SYSTEM_SUFFIX,
+        #     TASK=task,
+        #     MEMORY=""  # TODO We'll add memory later
+        # )
+
+        return """
+        you are helpful coding assistant. Make sure to output TERMINATE when you think the task is fully completed.
+
+        ------------ Task Started ---------------
+        Task: {task}
+
+        """.format(task=task)
+
+
+    def _has_tool_calls(self, result: AIMessage) -> bool:
+        return 'tool_calls' in result.additional_kwargs and result.additional_kwargs['tool_calls']
+
+
+    def _call_llm(self) -> AIMessage:
+        return self._model_client.invoke(self._full_system_prompt)
+
+
+    def _execute_function_call(self,tool_call: Dict[str, Any]) -> str:
+        """Execute a function call from the LLM response.
+        
+        Args:
+            tool_call: Dictionary containing function call information
+            
+        Returns:
+            str: Result of the function execution
+        """
+        try:
+            # Extract function name and arguments
+            func_name = tool_call['name']
+            args = tool_call['args']
+            
+            # Get the function from registry
+            func = FUNCTION_REGISTRY.get(func_name)
+            
+            if not func:
+                return f"Error: Function '{func_name}' not found in registry"
+            
+            # Get the function's parameter types
+            sig = inspect.signature(func)
+            params = sig.parameters
+            
+            # Convert arguments to the correct types
+            typed_args = {}
+            for param_name, param in params.items():
+                if param_name in args:
+                    param_type = param.annotation
+                    if param_type != inspect.Parameter.empty:
+                        # Convert to the correct type
+                        typed_args[param_name] = param_type(args[param_name])
                     else:
-                        description = ""
-                    self._tools.append(FunctionTool(tool, description=description))
-                else:
-                    raise ValueError(f"Unsupported tool type: {type(tool)}")
-        # Check if tool names are unique.
-        tool_names = [tool.name for tool in self._tools]
-        if len(tool_names) != len(set(tool_names)):
-            raise ValueError(f"Tool names must be unique: {tool_names}")
+                        typed_args[param_name] = args[param_name]
+            
+            # Call the function with the typed arguments
+            result = func(**typed_args)
+            return str(result)
+            
+        except Exception as e:
+            return f"Error executing function call: {str(e)}"
 
-        self._system_message = self._construct_system_prompt()
-        self._chat_history: List[LLMMessage] = [
-            SystemMessage(
-                content=self._system_message,
-            )
-        ]
-
-    def _construct_system_prompt(self) -> str:
-        return SYSTEM_PROMPT_TEMPLATE.format(
-            PREFIX=SYSTEM_PREFIX,
-            EXAMPLE=RUNNING_EXAMPLE,
-            TOOLS="",  # We'll add tools later
-            SUFFIX=SYSTEM_SUFFIX,
-        )
-
-    @message_handler
-    async def handle_message(self, message: Message, ctx: MessageContext) -> None:
-        logger.info(f"Received message: {message.content}")
-
-        self._chat_history.append(UserMessage(content=message.content, source="user"))
-
-
-        # TODO handle tool calls
-
-        # TODO handle memory
-
-        logger.info("Sending message to model...")
-        result = await self._model_client.create(self._chat_history, tools=self._tools)
-
-        logger.info(f"Got response from model: {result.content}")
+    
+    def _should_terminate(self, result: AIMessage) -> bool:
+        return 'TERMINATE' in result.content
+    
+    
+    async def run(self, message: str) -> None:
+        logger.info(f"Received message: {message}")
+        # print(FUNCTION_REGISTRY)
         
-        self._chat_history.append(AssistantMessage(content=result.content, source="assistant"))
-
+        self._full_system_prompt = self._construct_full_prompt(task=message)
         
 
+        while True:
+            logger.info(f"Full system prompt: {self._full_system_prompt}")
+            result = self._call_llm()
+            logger.info(f"LLM Result: {result}")
+            
+            if self._should_terminate(result):
+                logger.info(f"Final Output: {result.content}")
+                break
+            
+            self._full_system_prompt += result.content + "\n"
+            
 
-        logger.info("Sending response back...")
+            if self._has_tool_calls(result):
+                additional_kwargs = result.additional_kwargs
 
-        # send message to self for multi-step responses
-        # TODO need to add termination condition, otherwise it's running infinite loop
-        await self.send_message(Message(result.content), recipient=self.id)
+                self._full_system_prompt += json.dumps(additional_kwargs['tool_calls']) + "\n"
+                
+                for tool_call in additional_kwargs['tool_calls']:
+                    if 'function' in tool_call:
+                        # Convert the function call to the expected format
+                        func_call = {
+                            'name': tool_call['function']['name'],
+                            'args': json.loads(tool_call['function']['arguments'])
+                        }
+                        result = self._execute_function_call(func_call)
+                        print(f"\nFunction call result: {result}")
+                        
+                        self._full_system_prompt += result + "\n"
+
+                
+
+            
+        

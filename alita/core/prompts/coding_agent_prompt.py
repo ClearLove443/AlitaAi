@@ -282,10 +282,19 @@ SYSTEM_PROMPT_TEMPLATE = """
 
 {SUFFIX}
 
+--------------------- NEW TASK DESCRIPTION ---------------------
+{TASK}
+--------------------- END OF NEW TASK DESCRIPTION ---------------------
+
+--------------------- MEMORY ABOUT THE TASK ---------------------
+{MEMORY}
+--------------------- END OF MEMORY ABOUT THE TASK ---------------------
 """
 
 SYSTEM_SUFFIX = """
-
+---------------------------------------------------------------------------------------------------
+Make sure to add the word TERMINATE at the end of your response if you think the task is fully completed.
+---------------------------------------------------------------------------------------------------
 """
 
 

@@ -1,4 +1,20 @@
 import asyncio
+
+
+import logging
+
+# Configure logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    force=True  # This will override any existing logging configuration
+)
+
+# Enable debug logging for autogen-core
+logging.getLogger('autogen_core').setLevel(logging.INFO)
+logging.getLogger('autogen_ext').setLevel(logging.INFO)
+
+
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
