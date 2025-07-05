@@ -1,5 +1,6 @@
 from langchain_core.messages.ai import AIMessage
 from langchain_openai import ChatOpenAI
+import langchain
 
 import tempfile
 import asyncio
@@ -14,6 +15,10 @@ from .utils import FUNCTION_REGISTRY
 from .prompts.coding_agent_prompt import SYSTEM_PROMPT_TEMPLATE, SYSTEM_PREFIX, SYSTEM_SUFFIX, RUNNING_EXAMPLE
 
 logger = logging.getLogger(__name__)
+
+# Enable full LLM prompt logging
+langchain.debug = True 
+
 
 @dataclass
 class Message:
@@ -141,7 +146,7 @@ class CodingAgent():
                         }
                         result = self._execute_function_call(func_call)
                         print(f"\nFunction call result: {result}")
-                        
+
                         self._full_system_prompt += result + "\n"
 
                 
