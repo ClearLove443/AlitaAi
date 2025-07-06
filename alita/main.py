@@ -14,7 +14,7 @@ logging.getLogger('autogen_ext').setLevel(logging.INFO)
 
 
 from alita.core.coding_agent import CodingAgent
-from alita.core.execute_bash_command_tmux import execute_bash_command_tmux
+from alita.core.tools.execute_bash_command_tmux import execute_bash_command_tmux
 from alita.config import llm_config
 from langchain_openai import ChatOpenAI
 
@@ -32,7 +32,7 @@ async def main():
     # Create an embedded runtime
     coding_agent = CodingAgent(model_client=model_client, tools=[execute_bash_command_tmux])
     
-    await coding_agent.run("what are the files in current directory")
+    await coding_agent.run("investigate the current directory and explain the workflow of the coding agent")
 
 if __name__ == "__main__":
     asyncio.run(main())

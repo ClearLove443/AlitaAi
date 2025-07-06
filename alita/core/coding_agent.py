@@ -1,4 +1,5 @@
 from langchain_core.messages.ai import AIMessage
+from langchain_core.messages.tool import ToolCall
 from langchain_openai import ChatOpenAI
 import langchain
 
@@ -9,15 +10,15 @@ import inspect
 import logging
 from typing import Any, Awaitable, Callable, List, Optional, Dict
 from dataclasses import dataclass
-from .execute_bash_command_tmux import execute_bash_command_tmux
-from .utils import FUNCTION_REGISTRY
 
-from .prompts.coding_agent_prompt import SYSTEM_PROMPT_TEMPLATE, SYSTEM_PREFIX, SYSTEM_SUFFIX, RUNNING_EXAMPLE
+from alita.core.utils import FUNCTION_REGISTRY
+from alita.core.prompts.coding_agent_prompt import SYSTEM_PROMPT_TEMPLATE, SYSTEM_PREFIX, SYSTEM_SUFFIX, RUNNING_EXAMPLE
+
 
 logger = logging.getLogger(__name__)
 
 # Enable full LLM prompt logging
-langchain.debug = True 
+# langchain.debug = True 
 
 
 @dataclass
@@ -50,16 +51,18 @@ class CodingAgent():
         # )
 
         return """
-        you are helpful coding assistant. Make sure to output TERMINATE when you think the task is fully completed.
+you are a helpful coding assistant. Make sure to output TERMINATE at the end of your response when you think the task is fully completed.
 
-        ------------ Task Started ---------------
-        Task: {task}
+Please use the bash tool to view the file content and directory structure.
+
+------------ Task Started ---------------
+Task: {task}
 
         """.format(task=task)
 
 
     def _has_tool_calls(self, result: AIMessage) -> bool:
-        return 'tool_calls' in result.additional_kwargs and result.additional_kwargs['tool_calls']
+        return hasattr(result, 'tool_calls') and result.tool_calls
 
 
     def _call_llm(self) -> AIMessage:
@@ -115,7 +118,6 @@ class CodingAgent():
     
     async def run(self, message: str) -> None:
         logger.info(f"Received message: {message}")
-        # print(FUNCTION_REGISTRY)
         
         self._full_system_prompt = self._construct_full_prompt(task=message)
         
@@ -131,23 +133,21 @@ class CodingAgent():
             
             self._full_system_prompt += result.content + "\n"
             
-
             if self._has_tool_calls(result):
-                additional_kwargs = result.additional_kwargs
+                tool_calls = result.tool_calls
 
-                self._full_system_prompt += json.dumps(additional_kwargs['tool_calls']) + "\n"
+                self._full_system_prompt += json.dumps(tool_calls) + "\n"
                 
-                for tool_call in additional_kwargs['tool_calls']:
-                    if 'function' in tool_call:
-                        # Convert the function call to the expected format
-                        func_call = {
-                            'name': tool_call['function']['name'],
-                            'args': json.loads(tool_call['function']['arguments'])
-                        }
-                        result = self._execute_function_call(func_call)
-                        print(f"\nFunction call result: {result}")
+                for tool_call in tool_calls:
+                    # Convert the function call to the expected format
+                    func_call = {
+                        'name': tool_call['name'],
+                        'args': tool_call['args']
+                    }
+                    result = self._execute_function_call(func_call)
+                    logger.info(f"\nFunction call result: {result}")
 
-                        self._full_system_prompt += result + "\n"
+                    self._full_system_prompt += result + "\n"
 
                 
 
