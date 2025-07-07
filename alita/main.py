@@ -15,6 +15,7 @@ logging.getLogger('autogen_ext').setLevel(logging.INFO)
 
 from alita.core.coding_agent import CodingAgent
 from alita.core.tools.execute_bash_command_tmux import execute_bash_command_tmux
+from alita.core.tools.files import read_file, write_file, edit_file, add_lines, remove_lines
 from alita.config import llm_config
 from langchain_openai import ChatOpenAI
 
@@ -30,9 +31,17 @@ async def main():
     )
 
     # Create an embedded runtime
-    coding_agent = CodingAgent(model_client=model_client, tools=[execute_bash_command_tmux])
+    tools = [
+        read_file,
+        write_file,
+        edit_file,
+        add_lines,
+        remove_lines,
+        execute_bash_command_tmux
+    ]
+    coding_agent = CodingAgent(model_client=model_client, tools=tools)
     
-    await coding_agent.run("investigate the current directory and explain the workflow of the coding agent")
+    await coding_agent.run("Remove the greet() function from the autoTest/hello_world.py file, leaving only the Hello World print statement.")
 
 if __name__ == "__main__":
     asyncio.run(main())
