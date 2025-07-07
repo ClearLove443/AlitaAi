@@ -4,6 +4,7 @@ import logging
 # Configure logging first
 logging.basicConfig(
     level=logging.INFO,
+    filename='app.log',
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     force=True  # This will override any existing logging configuration
 )
@@ -16,6 +17,7 @@ logging.getLogger('autogen_ext').setLevel(logging.INFO)
 from alita.core.coding_agent import CodingAgent
 from alita.core.tools.execute_bash_command_tmux import execute_bash_command_tmux
 from alita.core.tools.files import read_file, write_file, edit_file, add_lines, remove_lines
+from alita.core.tools.finish import finish
 from alita.config import llm_config
 from langchain_openai import ChatOpenAI
 
@@ -32,16 +34,30 @@ async def main():
 
     # Create an embedded runtime
     tools = [
+        execute_bash_command_tmux,
+        finish,
         read_file,
         write_file,
         edit_file,
         add_lines,
         remove_lines,
-        execute_bash_command_tmux
     ]
     coding_agent = CodingAgent(model_client=model_client, tools=tools)
     
-    await coding_agent.run("Remove the greet() function from the autoTest/hello_world.py file, leaving only the Hello World print statement.")
+    code_write_prompt = """
+    Create a new file in current directory and write function to calculate fibonacci sequence using Python.
+    """
+
+    code_investigate_prompt = """
+    
+    Investigate current directory and explain the execution flow of the code base. Don't terminate until you can explain the whole execution flow.
+
+    """
+
+
+    await coding_agent.run(code_investigate_prompt)
+
+    # print(execute_bash_command_tmux.__doc__)
 
 if __name__ == "__main__":
     asyncio.run(main())

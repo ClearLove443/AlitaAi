@@ -1,55 +1,59 @@
 """
-A standalone utility to execute bash commands in a tmux session, capture the output, and return the result.
+Standalone utility to execute bash commands in a tmux session, capture the output, and return the result.
 """
-
 import os
 import time
 import uuid
 from typing import Optional, Dict, Any
 import libtmux
+import json
 
 from alita.core.utils import register_function
+from alita.core.tools.bash_observations import BashObservation
 
 @register_function
 def execute_bash_command_tmux(command: str, work_dir: Optional[str] = None, timeout: int = 30) -> Dict[str, Any]:
     """
-    Description:Execute a bash command in a new tmux session and capture its output.
+    Execute a bash command in an isolated tmux session with full output capture.
     
-    This function creates a temporary tmux session, executes the specified command in a bash shell,
-    captures both the command output and exit status, and returns them in a structured format.
-    The session is automatically cleaned up after command execution or timeout.
+    Key Features:
+    * Each command runs in a fresh tmux session to prevent environment contamination
+    * Full output capture including stdout, stderr and exit code
+    * Session cleanup after command completion
+    * Timeout handling for long-running commands
     
-    Args:
-        command (str): The bash command to execute. Can be any valid shell command or script.
-        work_dir (Optional[str]): The working directory for the command. If None, uses the current
-                                 working directory of the calling process.
-        timeout (int): Maximum time in seconds to wait for command completion before timing out.
-                      Default is 30 seconds.
+    CRITICAL REQUIREMENTS:
+    1. COMMAND SAFETY: Never execute destructive commands (rm -rf, mv, etc)
+    2. ABSOLUTE PATHS: Always use absolute paths for file operations
+    3. ISOLATION: Each command runs in a clean environment - set up required env vars explicitly
+    4. OUTPUT HANDLING: Large outputs will be truncated to prevent memory issues
+    
+    Parameters:
+      command (str): The bash command to execute
+      timeout (int, optional): Maximum runtime in seconds (default: 30)
+      work_dir (str, optional): Working directory for command (default: current working directory)
     
     Returns:
-        Dict[str, Any]: A dictionary containing:
-            - 'output' (str): The combined stdout and stderr output of the command.
-            - 'success' (bool): True if command executed successfully (exit code 0), False otherwise.
-            - 'error' (Optional[str]): Error message if an exception occurred, None otherwise.
-            - 'exit_code' (int): The exit code of the command. -1 if command timed out or failed to execute.
+      BashObservation containing:
+        - content (str): Command output (stdout + stderr)
+        - command (str): The bash command executed
+        - exit_code (int): Command's exit code
+        - error (str): Error message if any
     
-    Raises:
-        ImportError: If the required 'libtmux' package is not installed.
-        RuntimeError: If there's an issue with tmux server communication.
+    Usage Examples:
+    1. Basic command:
+       execute_bash_command_tmux("ls -la /path/to/dir")
     
-    Example:
-        >>> result = execute_bash_command_tmux("ls -la", "/tmp")
-        >>> if result['success']:
-        ...     print(f"Command output: {result['output']}")
-        ... else:
-        ...     print(f"Command failed with code {result['exit_code']}: {result['error']}")
+    2. With timeout:
+       execute_bash_command_tmux("long_running_script.sh", timeout=120)
     
-    Notes:
-        - Each command runs in a fresh tmux session to ensure isolation.
-        - The command is executed with bash's -c flag in a new session.
-        - The function handles cleanup of temporary tmux sessions.
-        - Output is captured from the tmux pane after command completion.
-        - Exit code is captured by appending '; echo EXIT_CODE:$?' to the command.
+    3. With working directory:
+       execute_bash_command_tmux("./script.sh", work_dir="/project/src")
+    
+    Security Notes:
+    - Commands are NOT sanitized - implement input validation at call site
+    - Never pass untrusted user input directly to this function
+    - Consider using command allowlists in production
     """
     session_name = f"juno-tmp-{uuid.uuid4().hex[:8]}"
     server = libtmux.Server()
@@ -108,9 +112,9 @@ def execute_bash_command_tmux(command: str, work_dir: Optional[str] = None, time
             except:
                 pass
 
-    return {
-        'output': output,
-        'success': error is None and exit_code == 0,
-        'error': error,
-        'exit_code': exit_code,
-    }
+    return BashObservation(
+        content=output,
+        command=command,
+        exit_code=exit_code,
+        error=error,
+    )

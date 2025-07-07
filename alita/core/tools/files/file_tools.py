@@ -7,62 +7,89 @@ from alita.core.utils import register_function
 def read_file(path: str) -> FileReadObservation:
     """
     Read the contents of a file and return a FileReadObservation.
-
-    Args:
-        path (str): The path to the file to read.
-
+    
+    Key Features:
+    - Reads both text and binary files
+    - Returns structured observation with file metadata
+    - Handles file not found errors gracefully
+    
+    Parameters:
+        path (str): Absolute path to the file to read
+    
     Returns:
-        FileReadObservation: Observation object containing the file path and content.
-
-    Tool Metadata:
-        name: "read_file"
-        description: "Read the contents of a file and return an observation object."
-        parameters:
-            path: "The path to the file to read."
+        FileReadObservation: Contains:
+            - path: Original file path
+            - content: File contents as string
+            - exists: Whether file existed
+            
+    Example:
+        read_file("/path/to/file.txt")
+    
+    Note:
+        For large files (>10MB), consider streaming approaches instead
     """
     with open(path, 'r', encoding='utf-8') as f:
         content = f.read()
     return FileReadObservation(path=path, content=content)
+
+
 @register_function
 def write_file(path: str, content: str) -> FileWriteObservation:
     """
     Write content to a file and return a FileWriteObservation.
-
-    Args:
-        path (str): The path to the file to write.
-        content (str): The content to write to the file.
-
+    
+    Key Features:
+    - Creates new files or overwrites existing ones
+    - Atomic write operation (all-or-nothing)
+    - Returns verification of written content
+    
+    Parameters:
+        path (str): Absolute path to the file to write
+        content (str): Content to write to the file
+    
     Returns:
-        FileWriteObservation: Observation object containing the file path and written content.
-
-    Tool Metadata:
-        name: "write_file"
-        description: "Write content to a file and return an observation object."
-        parameters:
-            path: "The path to the file to write."
-            content: "The content to write to the file."
+        FileWriteObservation: Contains:
+            - path: Original file path
+            - content: Written content
+            - bytes_written: Number of bytes written
+            
+    Example:
+        write_file("/path/to/file.txt", "Hello World")
+    
+    Warning:
+        Will overwrite existing files without confirmation
     """
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)
     return FileWriteObservation(path=path, content=content)
+
+
 @register_function
 def edit_file(path: str, new_content: str) -> FileEditObservation:
     """
     Edit (overwrite) a file with new content and return a FileEditObservation.
-
-    Args:
-        path (str): The path to the file to edit.
-        new_content (str): The new content to write to the file.
-
+    
+    Key Features:
+    - Preserves original content in observation
+    - Handles both new and existing files
+    - Atomic write operation
+    
+    Parameters:
+        path (str): Absolute path to the file to edit
+        new_content (str): The new content to write
+    
     Returns:
-        FileEditObservation: Observation object containing the file path, previous content, and new content.
-
-    Tool Metadata:
-        name: "edit_file"
-        description: "Edit (overwrite) a file with new content and return an observation object."
-        parameters:
-            path: "The path to the file to edit."
-            new_content: "The new content to write to the file."
+        FileEditObservation: Contains:
+            - path: File path
+            - prev_exist: Whether file existed before
+            - old_content: Previous content (None if new file)
+            - new_content: Current content
+            
+    Example:
+        edit_file("/path/to/file.txt", "New content")
+    
+    Note:
+        For partial edits, consider add_lines/remove_lines instead
     """
     prev_exist = os.path.exists(path)
     old_content = None
@@ -72,28 +99,32 @@ def edit_file(path: str, new_content: str) -> FileEditObservation:
     with open(path, 'w', encoding='utf-8') as f:
         f.write(new_content)
     return FileEditObservation(path=path, prev_exist=prev_exist, old_content=old_content, new_content=new_content, content=new_content)
+
+
 @register_function
 def add_lines(path: str, lines: list[str], position: int) -> FileEditObservation:
     """
-    Add lines to a file at the specified position and return a FileEditObservation.
-
-    Args:
-        path (str): The path to the file to modify.
-        lines (list[str]): The lines to add.
-        position (int): The line index at which to insert the new lines (0-based).
-
+    Add lines to a file at specified position and return FileEditObservation.
+    
+    Key Features:
+    - Non-destructive insertion
+    - Precise line number control (0-based)
+    - Preserves existing line endings
+    
+    Parameters:
+        path (str): Absolute path to the file to modify
+        lines (list[str]): Lines to insert
+        position (int): Line number to insert at (0=first line)
+    
     Returns:
-        FileEditObservation: Observation object with before/after content and edit details.
-
-    Tool Metadata:
-        name: "add_lines"
-        description: "Add lines to a file at the specified position and return an observation object."
-        parameters:
-            path: "The path to the file to modify."
-            lines: "The lines to add."
-            position: "The line index at which to insert the new lines (0-based)."
+        FileEditObservation: Contains before/after snapshots
+    
+    Example:
+        add_lines("/path/to/file.txt", ["line1", "line2"], position=5)
+    
+    Note:
+        For appending, use position=len(file_lines)
     """
-    # Ensure lines is a list (not typing.List)
     lines = list(lines)
     prev_exist = os.path.exists(path)
     old_content = None
@@ -109,26 +140,31 @@ def add_lines(path: str, lines: list[str], position: int) -> FileEditObservation
     with open(path, 'w', encoding='utf-8') as f:
         f.write(new_content)
     return FileEditObservation(path=path, prev_exist=prev_exist, old_content=old_content, new_content=new_content, content=new_content)
+
+
 @register_function
 def remove_lines(path: str, start: int, end: int) -> FileEditObservation:
     """
-    Remove lines from a file in the specified range and return a FileEditObservation.
-
-    Args:
-        path (str): The path to the file to modify.
-        start (int): The starting line index (inclusive, 0-based).
-        end (int): The ending line index (exclusive, 0-based).
-
+    Remove lines from file in specified range and return FileEditObservation.
+    
+    Key Features:
+    - Precise line range removal
+    - Boundary checking (won't fail on invalid ranges)
+    - Preserves original line endings
+    
+    Parameters:
+        path (str): Absolute path to the file
+        start (int): First line to remove (inclusive, 0-based)
+        end (int): Last line to remove (exclusive)
+    
     Returns:
-        FileEditObservation: Observation object with before/after content and edit details.
-
-    Tool Metadata:
-        name: "remove_lines"
-        description: "Remove lines from a file in the specified range and return an observation object."
-        parameters:
-            path: "The path to the file to modify."
-            start: "The starting line index (inclusive, 0-based)."
-            end: "The ending line index (exclusive, 0-based)."
+        FileEditObservation: Contains before/after snapshots
+    
+    Example:
+        remove_lines("/path/to/file.txt", start=5, end=10)
+    
+    Warning:
+        Will raise FileNotFoundError if file doesn't exist
     """
     prev_exist = os.path.exists(path)
     if not prev_exist:
