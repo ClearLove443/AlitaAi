@@ -3,7 +3,6 @@ from typing import List
 import os
 from alita.core.utils import register_function
 
-@register_function
 def read_file(path: str) -> FileReadObservation:
     """
     Read the contents of a file and return a FileReadObservation.
@@ -33,7 +32,6 @@ def read_file(path: str) -> FileReadObservation:
     return FileReadObservation(path=path, content=content)
 
 
-@register_function
 def write_file(path: str, content: str) -> FileWriteObservation:
     """
     Write content to a file and return a FileWriteObservation.
@@ -64,7 +62,6 @@ def write_file(path: str, content: str) -> FileWriteObservation:
     return FileWriteObservation(path=path, content=content)
 
 
-@register_function
 def edit_file(path: str, new_content: str) -> FileEditObservation:
     """
     Edit (overwrite) a file with new content and return a FileEditObservation.
@@ -101,7 +98,6 @@ def edit_file(path: str, new_content: str) -> FileEditObservation:
     return FileEditObservation(path=path, prev_exist=prev_exist, old_content=old_content, new_content=new_content, content=new_content)
 
 
-@register_function
 def add_lines(path: str, lines: list[str], position: int) -> FileEditObservation:
     """
     Add lines to a file at specified position and return FileEditObservation.
@@ -142,7 +138,6 @@ def add_lines(path: str, lines: list[str], position: int) -> FileEditObservation
     return FileEditObservation(path=path, prev_exist=prev_exist, old_content=old_content, new_content=new_content, content=new_content)
 
 
-@register_function
 def remove_lines(path: str, start: int, end: int) -> FileEditObservation:
     """
     Remove lines from file in specified range and return FileEditObservation.

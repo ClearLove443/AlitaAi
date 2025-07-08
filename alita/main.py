@@ -16,8 +16,8 @@ logging.getLogger('autogen_ext').setLevel(logging.INFO)
 
 from alita.core.coding_agent import CodingAgent
 from alita.core.tools.execute_bash_command_tmux import execute_bash_command_tmux
-from alita.core.tools.files import read_file, write_file, edit_file, add_lines, remove_lines
 from alita.core.tools.finish import finish
+from alita.core.tools.files.file_action_executor import execute_file_action
 from alita.config import llm_config
 from langchain_openai import ChatOpenAI
 
@@ -36,16 +36,12 @@ async def main():
     tools = [
         execute_bash_command_tmux,
         finish,
-        read_file,
-        write_file,
-        edit_file,
-        add_lines,
-        remove_lines,
+        execute_file_action,
     ]
     coding_agent = CodingAgent(model_client=model_client, tools=tools)
     
     code_write_prompt = """
-    Create a new file in current directory and write function to calculate fibonacci sequence using Python.
+    Create a new file in current directory named with test_output.py and write function to calculate fibonacci sequence using Python.
     """
 
     code_investigate_prompt = """
@@ -55,7 +51,7 @@ async def main():
     """
 
 
-    await coding_agent.run(code_investigate_prompt)
+    await coding_agent.run(code_write_prompt)
 
     # print(execute_bash_command_tmux.__doc__)
 
