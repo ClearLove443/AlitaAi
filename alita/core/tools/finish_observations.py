@@ -10,7 +10,7 @@ class FinishObservation(Observation):
 
     @property
     def message(self) -> str:
-        return f'Finish the task.'
+        return f'Finished the task.'
 
     def __str__(self) -> str:
-        return f'[Finish the task: {self.task_completed}. The output is as follows:]\n{self.content}'
+        return f'[Finished the task: {self.task_completed}. The output is as follows:]\n{self.content}'

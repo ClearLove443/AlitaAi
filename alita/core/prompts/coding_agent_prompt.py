@@ -74,7 +74,7 @@ ASSISTANT: Sure! Let me first check the current directory:
 
 USER: EXECUTION RESULT of [execute_bash]:
 /workspace
-openhands@runtime:~/workspace$
+alita@code:~/workspace$
 
 ASSISTANT:
 There is no `app.py` file in the current directory. Let me create a Python file `app.py`:

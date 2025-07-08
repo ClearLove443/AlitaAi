@@ -38,7 +38,7 @@ class ToolCall:
 
 class CodingAgent():
     def __init__(
-        self, 
+        self,
         model_client: ChatOpenAI,
         tools: List[Callable[..., Any] | Callable[..., Awaitable[Any]]] | None = None,
         memory: Optional[Memory] = None,
