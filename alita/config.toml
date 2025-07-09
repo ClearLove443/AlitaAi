@@ -1,0 +1,11 @@
+[llm]
+model = "deepseek-chat"
+base_url = "https://api.deepseek.com/"
+api_key = "sk-08769ff2aa534998a0c42fe6c825d7bf"
+
+[llm2]
+model = "gpt-4o"
+base_url = "https://tao.plus7.plus/v1"
+api_key = "sk-49PoeO0T27v5JjBEmLbw11j4swR65yixvWYo0mZS9MmXOrCw"
+
+
