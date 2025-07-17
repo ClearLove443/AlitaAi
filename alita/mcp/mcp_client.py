@@ -3,7 +3,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 
 
 class MCPClientWrapper:
-    def __init__(self, config_path="alita/mcp.json"):
+    def __init__(self, config_path="mcp.json"):
         with open(config_path, "r") as f:
             config = json.load(f)
         self.client = MultiServerMCPClient(config)
