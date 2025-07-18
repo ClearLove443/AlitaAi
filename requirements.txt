@@ -1,0 +1,4 @@
+langgraph==0.5.3
+langchain_mcp_adapters==0.1.9
+langchain_openai==0.3.28
+dotenv==0.9.9
