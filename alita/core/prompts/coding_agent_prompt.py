@@ -53,6 +53,7 @@ Your primary role is to assist users by executing commands, modifying code, and 
 - Always explain your reasoning before using any tools
 - Use tools to gather concrete information about the codebase
 - One tool call at a time
+- Always write code to the designated working directory
 </TOOL_USAGE>
 """
 
@@ -63,11 +64,13 @@ Here's a running example of how to perform a task with the provided tools.
 --------------------- START OF EXAMPLE ---------------------
 USER: Create a list of numbers from 1 to 10.
 
+Your working directory is /workspace. Start from this working directory to solve the task.
+
 ASSISTANT: Sure! Let me first check the current directory:
 {
   'name': 'execute_bash_command_tmux',
   'args': {
-    'command': 'pwd && ls',
+    'command': 'ls /workspace',
     'timeout': 30
   }
 }
@@ -130,11 +133,28 @@ The log shows the result is correct in that the file runs successfully. Let me k
 
 --------------------- END OF EXAMPLE ---------------------
 
+
+
+"""
+
+EXTRA_INFO = """
+------------------ EXTRA INFORMATION --------------------
+IMPORTANT: 
+1. NEVER make up or hallucinate tool outputs. Wait for the actual results from tool executions.
+2. NEVER pretend to execute commands or create files without using the appropriate tools.
+3. NEVER fabricate terminal output or file content.
+4. If you need to perform an action, use the appropriate tool and wait for its response.
+5. Be precise and accurate in your responses.
+
+------------------ END OF EXTRA INFORMATION ----------------
+
 """
 
 SYSTEM_SUFFIX = """
-
+Your working directory is {work_dir}. Start from this working directory to solve the task.
 """
+
+
 
 SYSTEM_PROMPT_TEMPLATE = """
 {prefix}
@@ -143,10 +163,14 @@ SYSTEM_PROMPT_TEMPLATE = """
 
 {example}
 
+{extra_info}
+
 ----------------Task Starts----------------
 Task: {task}
 
+{suffix}
 """
+
 
 
 

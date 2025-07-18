@@ -178,7 +178,6 @@ async def main():
     # Create the event stream
     event_stream = EventStream()
     
-
     example_processor = ExampleProcessor()
     # Register a handler
     event_stream.register_processor(example_processor, [Topic('test_topic')])

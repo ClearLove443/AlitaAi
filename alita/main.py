@@ -1,12 +1,13 @@
 import asyncio
 import logging
+from datetime import datetime
 
 from alita.mcp.mcp_client import MCPClientWrapper
 
 # Configure logging first
 logging.basicConfig(
     level=logging.INFO,
-    filename="app.log",
+    filename=f"logs/app-{datetime.now().strftime("_%Y%m%d_%H%M%S")}.log",
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     force=True,  # This will override any existing logging configuration
 )
@@ -52,7 +53,7 @@ async def main():
     coding_agent = CodingAgent(model_client=model_client,work_dir="/Users/dongqiuyepu/Desktop/code/python/AlitaAi/workspace", tools=tools)
 
     code_write_prompt = """
-    The working directory is empty right now. Write a restful service using python fastapi framework that returns hello world. Make sure it runs successfully.
+    Write a restful service using python fastapi framework that returns hello world. Make sure it runs successfully.
     """
 
     code_investigate_prompt = """
