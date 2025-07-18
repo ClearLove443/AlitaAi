@@ -16,6 +16,8 @@ from alita.core.prompts.coding_agent_prompt import (
     SYSTEM_PROMPT_TEMPLATE,
     SYSTEM_PREFIX,
     RUNNING_EXAMPLE,
+    SYSTEM_SUFFIX,
+    EXTRA_INFO
 )
 
 
@@ -47,12 +49,13 @@ class CodingAgent:
     def __init__(
         self,
         model_client: ChatOpenAI,
+        work_dir: str = "./workspace",
         tools: List[Callable[..., Any] | Callable[..., Awaitable[Any]]] | None = None,
         memory: Optional[Memory] = None,
     ) -> None:
 
         self._model_client = model_client.bind_tools(tools)
-
+        self._work_dir = work_dir
         if tools:
             self._tools_prompt = self._construct_tools_prompt(tools)
 
@@ -80,7 +83,8 @@ class CodingAgent:
 
                 args += "\n"
                 tool_prompt += args
-                tool_prompt += f"\n---- END FUNCTION #{index} ----\n\n"
+            
+            tool_prompt += f"\n---- END FUNCTION #{index} ----\n\n"
 
         return tool_prompt
 
@@ -90,6 +94,8 @@ class CodingAgent:
             tools=self._tools_prompt,
             example=RUNNING_EXAMPLE,
             task=task,
+            extra_info=EXTRA_INFO,
+            suffix=SYSTEM_SUFFIX.format(work_dir=self._work_dir),
         )
 
     def _call_llm(self) -> AIMessage:
@@ -194,7 +200,7 @@ class CodingAgent:
                 )
             tool_call = tool_calls[0]
             observation = self._execute_function_call(tool_call)
-            logger.info(f"\nFunction call result: {observation}")
+            # logger.info(f"\nFunction call result: {observation}")
 
             # self._full_system_prompt += f"{observation}\n\n" + "-"*20 + "\n\n"
             return observation
@@ -208,11 +214,12 @@ class CodingAgent:
             self._construct_full_prompt(task=message) + "-" * 20 + "\n\n"
         )
 
+        logger.info(f"Full system prompt: {self._full_system_prompt}")
         while True:
             self._iter_count += 1
             print(f"----- Iteration {self._iter_count} -----")
             logger.info(f"----- Iteration {self._iter_count} -----")
-            logger.info(f"Full system prompt: {self._full_system_prompt}")
+            # logger.info(f"Full system prompt: {self._full_system_prompt}")
 
             ### - call LLM
             llm_output: AIMessage = self._call_llm()
@@ -220,6 +227,8 @@ class CodingAgent:
 
             ### - call tool
             observation: Observation | None = self._handle_tool_calls(llm_output)
+
+            logger.info(f"Tool call result: {observation}")
 
             ### - check whether terminate
             if isinstance(observation, FinishObservation):

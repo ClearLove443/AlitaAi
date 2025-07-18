@@ -30,23 +30,29 @@ async def main():
     # Create the model client
     logger.info("Creating OpenAI chat completion client...")
     model_client = ChatOpenAI(
-        model=llm_config.model, api_key=llm_config.api_key, base_url=llm_config.base_url
+        model=llm_config.model,
+        temperature=0,
+        api_key=llm_config.api_key,
+        base_url=llm_config.base_url
     )
 
     mcp = MCPClientWrapper()
     mcp_tools = await mcp.get_tools()
+
+    # print(mcp_tools)
+    # return 
 
     # Create an embedded runtime
     tools = [
         execute_bash_command_tmux,
         finish,
         execute_file_action,
-        *mcp_tools,
+        # *mcp_tools,
     ]
-    coding_agent = CodingAgent(model_client=model_client, tools=tools)
+    coding_agent = CodingAgent(model_client=model_client,work_dir="/Users/dongqiuyepu/Desktop/code/python/AlitaAi/workspace", tools=tools)
 
     code_write_prompt = """
-    use context7 to create a new file in current directory named with test_output.py and write function to calculate fibonacci sequence using Python.
+    The working directory is empty right now. Write a restful service using python fastapi framework that returns hello world. Make sure it runs successfully.
     """
 
     code_investigate_prompt = """
